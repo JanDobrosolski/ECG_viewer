@@ -103,7 +103,12 @@ class ECGViewer:
 
     def next_frame(self):
         if self.signal_generator:
-            self.current_window = next(self.signal_generator, None)
+            next_window = next(self.signal_generator, None)
+            
+            if next_window is not None:
+                self.current_window = next_window
+            else:
+                self.playing = False
 
     def open_signal_file(self):
         # Open a file dialog to select a signal file
