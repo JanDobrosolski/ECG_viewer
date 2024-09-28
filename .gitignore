@@ -1,0 +1,12 @@
+dataset.csv
+tmp/
+models/
+electrocardiograms/
+venv/
+*.png
+__pycache__/
+physionetSignals/
+test_electrocardiograms/
+
+*.txt
+!requirements.txt
