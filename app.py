@@ -4,8 +4,11 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from tkinter import Tk, filedialog
+import platform
+import os
+from typing import Optional, Generator
 
-from components.buttons import draw_button, draw_radio_button
+from components.buttons import draw_button, draw_radio_button, handle_hover_effect
 
 from utils.signal_loader import SignalReader, get_signal_reader
 from utils.constants import *
@@ -13,19 +16,19 @@ from utils.constants import *
 
 class ECGViewer:
     def __init__(self, window_size=1536, window_step=128):
-        self.window_size = window_size
-        self.window_step = window_step
+        self.window_size: int = window_size
+        self.window_step: int = window_step
 
-        self.signal_path = None
-        self.selected_reader = "apple"
-        self.signal_reader = get_signal_reader(self.selected_reader)
+        self.signal_path: str = None
+        self.selected_reader: str = "apple"
+        self.signal_reader: SignalReader = get_signal_reader(self.selected_reader)
 
-        self.signal_generator = None
-        self.current_window = None
-        self.playing = False
+        self.signal_generator: Optional[Generator[list[float], None, None]] = None
+        self.current_window: Optional[list[float]] = None
+        self.playing: bool = False
 
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen: pygame.Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("ECG Signal Viewer")
 
     def draw_sidebar(self):
@@ -42,25 +45,22 @@ class ECGViewer:
 
         # Add "Open Signal" button
         open_button_rect = pygame.Rect(20, 80, 160, 40)
-        draw_button(self.screen, open_button_rect, BLUE, "Open Signal", BUTTON_FONT, WHITE)
+        hover = handle_hover_effect(open_button_rect, pygame.mouse.get_pos())
+        draw_button(self.screen, open_button_rect, LIGHT_GRAY, "Open Signal", BUTTON_FONT, WHITE, hover)
 
         # Add "Close Signal" button
         close_button_rect = pygame.Rect(20, 130, 160, 40)
-        draw_button(self.screen, close_button_rect, RED, "Close Signal", BUTTON_FONT, WHITE)
+        hover = handle_hover_effect(close_button_rect, pygame.mouse.get_pos())
+        draw_button(self.screen, close_button_rect, LIGHT_GRAY, "Close Signal", BUTTON_FONT, WHITE, hover)
 
         # Draw radio buttons for selecting reader
-        apple_reader_text = BUTTON_FONT.render("Apple Watch Reader", True, BLACK)
-        physionet_reader_text = BUTTON_FONT.render("PhysioNet Reader", True, BLACK)
-
-        # Radio button for Apple Watch Reader
         apple_radio_rect = pygame.Rect(20, 180, 20, 20)
-        draw_radio_button(self.screen,apple_radio_rect, BLACK, "Apple Watch Reader", BUTTON_FONT, BLACK, self.selected_reader == "apple")
+        draw_radio_button(self.screen, apple_radio_rect, DARK_GRAY, "Apple Watch Reader", BUTTON_FONT, BLACK, self.selected_reader == "apple")
 
-        # Radio button for PhysioNet Reader
         physionet_radio_rect = pygame.Rect(20, 210, 20, 20)
-        draw_radio_button(self.screen, physionet_radio_rect, BLACK, "PhysioNet Reader", BUTTON_FONT, BLACK, self.selected_reader == "physionet")
-
+        draw_radio_button(self.screen, physionet_radio_rect, DARK_GRAY, "PhysioNet Reader", BUTTON_FONT, BLACK, self.selected_reader == "physionet")
         # Store button and radio button rects for event handling
+
         self.open_button_rect = open_button_rect
         self.apple_radio_rect = apple_radio_rect
         self.physionet_radio_rect = physionet_radio_rect
@@ -75,7 +75,7 @@ class ECGViewer:
             return
 
         # Create the matplotlib figure and axis
-        fig, ax = plt.subplots(figsize=(window_rect.width / 100, window_rect.height / 100), dpi=100)
+        fig, ax = plt.subplots(figsize=(window_rect.width / PLOT_SCALE_FACTOR, window_rect.height / PLOT_SCALE_FACTOR), dpi=100)
         ax.plot(self.current_window, color='blue')
         ax.set_ylim(-0.1, 1.1)  # Match the scale to the normalized signal range
         ax.set_xlim(0, len(self.current_window))
@@ -111,12 +111,15 @@ class ECGViewer:
                 self.playing = False
 
     def open_signal_file(self):
-        # Open a file dialog to select a signal file
-        root = Tk()
-        root.withdraw()
-        file_path = filedialog.askopenfilename()
-        root.update()
-        root.destroy()
+        if platform.system() == "Darwin":
+            # Use macOS specific method to open file dialog
+            file_path = os.popen('osascript -e "POSIX path of (choose file)"').read().strip()
+        else:
+            root = Tk()
+            root.withdraw()
+            file_path = filedialog.askopenfilename()
+            root.update()
+            root.destroy()
 
         if file_path:
             self.signal_path = file_path
