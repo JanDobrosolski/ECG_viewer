@@ -21,6 +21,8 @@ class ECGViewer:
         self.window_step: int = window_step
 
         self.signal_path: str = None
+        self.signal_name: str = ""
+        self.current_position: str = ""
         self.selected_reader: str = "apple"
         self.signal_reader: SignalReader = get_signal_reader(self.selected_reader)
 
@@ -78,6 +80,7 @@ class ECGViewer:
     def draw_menu(self):
         self.screen.fill(GREY)
         self.draw_sidebar()
+        self.draw_signal_info()
 
     def draw_signal(self, window_rect):
         if not self.current_window:
@@ -116,6 +119,7 @@ class ECGViewer:
             
             if next_window is not None:
                 self.current_window = next_window
+                self.current_position = str(self.signal_reader.position_to_index())
             else:
                 self.playing = False
 
@@ -132,6 +136,8 @@ class ECGViewer:
 
         if file_path:
             self.signal_path = file_path
+            self.signal_name = os.path.split(file_path)[-1][:-4]
+            self.current_position = "0"
             self.signal_reader.configure_reader(file_path, self.window_size, self.window_step)
             self.signal_generator = self.signal_reader.stream_normalized_signal()
             self.current_window = next(self.signal_generator, None)
@@ -150,6 +156,8 @@ class ECGViewer:
 
             elif self.close_button_rect.collidepoint(event.pos):
                 self.signal_path = None
+                self.signal_name = ""
+                self.current_position = ""
                 self.signal_generator = None
                 self.current_window = None
                 self.playing = False
@@ -166,14 +174,24 @@ class ECGViewer:
                 tagged_signal = TaggedSignal(self.current_window)
                 tagged_signal.tag_window()
 
-                signal_name = os.path.split(self.signal_path)[-1][:-4]
-                window_pos = self.signal_reader.position_to_index()
+                signal_name = self.signal_name
 
                 dir_path = os.path.join(TAGGED_SIGNALS_DIR_NAME, f"size_{self.window_size}", f"step_{self.window_step}")
 
-                filename = f"{signal_name}_pos_{window_pos}.json"
+                filename = f"{signal_name}_pos_{self.current_position}.json"
 
                 tagged_signal.save_to_json(dir_path, filename)
+
+    def draw_signal_info(self):
+        font = pygame.font.Font(None, 24)
+
+        # Draw the signal name
+        text_surface = font.render(f"Signal: {self.signal_name}", True, BLACK)
+        self.screen.blit(text_surface, (SIDEBAR_WIDTH + 10, 5))
+
+        # Draw the current window position
+        text_surface = font.render(f"Window number: {self.current_position}", True, BLACK)
+        self.screen.blit(text_surface, (SCREEN_WIDTH * 0.8, 5))
 
     def run(self):
         clock = pygame.time.Clock()
@@ -193,8 +211,9 @@ class ECGViewer:
                     if event.key == pygame.K_RIGHT:
                         self.next_frame()
                     elif event.key == pygame.K_LEFT:
-                        self.signal_reader.go_back()
-                        self.next_frame()
+                        if self.current_position != "0":
+                            self.signal_reader.go_back()
+                            self.next_frame()
                     elif event.key == pygame.K_SPACE:
                         self.playing = not self.playing
                 self.handle_event(event)
