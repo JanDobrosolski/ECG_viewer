@@ -13,6 +13,13 @@ class SignalReader(ABC):
         self.signal = self.read_signal(signal_path)
         self.window_size = window_size
         self.window_step = window_step
+        self.last_window_index = (len(self.signal) - self.window_size) // self.window_step
+
+    def clear_reader(self):
+        self.signal = None
+        self.window_size = None
+        self.window_step = None
+        self.current_position = 0
 
     @abstractmethod
     def read_signal(self, signal_path: str) -> list[int]:

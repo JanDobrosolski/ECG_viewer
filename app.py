@@ -122,6 +122,7 @@ class ECGViewer:
                 self.current_position = str(self.signal_reader.position_to_index())
             else:
                 self.playing = False
+                self.signal_reader.current_position -= self.window_step
 
     def open_signal_file(self):
         if platform.system() == "Darwin":
@@ -161,6 +162,7 @@ class ECGViewer:
                 self.signal_generator = None
                 self.current_window = None
                 self.playing = False
+                self.signal_reader.clear_reader()
 
             elif self.apple_radio_rect.collidepoint(event.pos):
                 self.selected_reader = "apple"
