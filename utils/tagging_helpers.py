@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 
 from typing import Callable
 
-from utils.constants import TAGGED_SIGNALS_DIR_NAME
-
 
 def onclick_tagging(peaks: list[tuple[int, float]]) -> Callable:
     # The actual event handler function
@@ -36,10 +34,9 @@ class TaggedSignal:
         peaks = [(peak['x'], peak['y']) for peak in data['peaks']]
         return cls(signal, peaks)
 
-    def save_to_json(self, signal_name: str, window_pos: int) -> None:
-        os.makedirs(TAGGED_SIGNALS_DIR_NAME, exist_ok=True)
-        filename = f"{signal_name}_{window_pos}.json"
-        filepath = os.path.join(TAGGED_SIGNALS_DIR_NAME, filename)
+    def save_to_json(self, dir_path: str, filename: str) -> None:
+        os.makedirs(dir_path, exist_ok=True)
+        filepath = os.path.join(dir_path, filename)
         
         with open(filepath, 'w') as json_file:
             json.dump(self.to_dict(), json_file, indent=4)

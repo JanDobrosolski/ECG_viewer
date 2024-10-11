@@ -132,7 +132,8 @@ class ECGViewer:
 
         if file_path:
             self.signal_path = file_path
-            self.signal_generator = self.signal_reader.stream_normalized_signal(file_path, self.window_size, self.window_step)
+            self.signal_reader.configure_reader(file_path, self.window_size, self.window_step)
+            self.signal_generator = self.signal_reader.stream_normalized_signal()
             self.current_window = next(self.signal_generator, None)
 
     def update_reader(self):
@@ -162,10 +163,17 @@ class ECGViewer:
                 self.update_reader()
 
             elif self.tag_button_rect.collidepoint(event.pos):
-                # #TODO change naming after introducing window tracking
                 tagged_signal = TaggedSignal(self.current_window)
                 tagged_signal.tag_window()
-                tagged_signal.save_to_json(os.path.split(self.signal_path)[-1][:-4], 0)
+
+                signal_name = os.path.split(self.signal_path)[-1][:-4]
+                window_pos = self.signal_reader.position_to_index()
+
+                dir_path = os.path.join(TAGGED_SIGNALS_DIR_NAME, f"size_{self.window_size}", f"step_{self.window_step}")
+
+                filename = f"{signal_name}_pos_{window_pos}.json"
+
+                tagged_signal.save_to_json(dir_path, filename)
 
     def run(self):
         clock = pygame.time.Clock()
@@ -183,6 +191,9 @@ class ECGViewer:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RIGHT:
+                        self.next_frame()
+                    elif event.key == pygame.K_LEFT:
+                        self.signal_reader.go_back()
                         self.next_frame()
                     elif event.key == pygame.K_SPACE:
                         self.playing = not self.playing

@@ -3,16 +3,38 @@ import wfdb
 import numpy as np
 
 class SignalReader(ABC):
+    def __init__(self, ):
+        self.signal = None
+        self.window_size = None
+        self.window_step = None
+        self.current_position = 0
+
+    def configure_reader(self, signal_path: str, window_size: int, window_step: int):
+        self.signal = self.read_signal(signal_path)
+        self.window_size = window_size
+        self.window_step = window_step
+
     @abstractmethod
     def read_signal(self, signal_path: str) -> list[int]:
         pass
 
-    def stream_normalized_signal(self, signal_path: str, window_size: int, window_step: int):
-        signal = self.read_signal(signal_path)
+    def stream_normalized_signal(self):
+        while self.current_position + self.window_size <= len(self.signal):
+            window = self.signal[self.current_position:self.current_position + self.window_size]
+            normalized_window = self._normalize_window(window)
+            self.current_position += self.window_step
+            yield normalized_window
 
-        for i in range(0, len(signal) - window_size + 1, window_step):
-            window = signal[i:i + window_size]
-            yield self._normalize_window(window)
+    def reset_position(self):
+        """Resets the current position to start streaming from the beginning."""
+        self.current_position = 0
+
+    def go_back(self):
+        """Moves the current position back by one window step."""
+        self.current_position = max(0, self.current_position - self.window_step*2)
+
+    def position_to_index(self) -> int:
+        return (self.current_position//self.window_step)-1
 
     def _normalize_window(self, window: list[int]) -> list[float]:
         min_val = min(window)
