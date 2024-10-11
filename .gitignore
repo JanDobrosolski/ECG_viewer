@@ -7,6 +7,7 @@ venv/
 __pycache__/
 physionetSignals/
 test_electrocardiograms/
+tagged_signals/
 
 *.txt
 !requirements.txt

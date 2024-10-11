@@ -11,6 +11,7 @@ from typing import Optional, Generator
 from components.buttons import draw_button, draw_radio_button, handle_hover_effect
 
 from utils.signal_loader import SignalReader, get_signal_reader
+from utils.tagging_helpers import TaggedSignal
 from utils.constants import *
 
 
@@ -59,12 +60,20 @@ class ECGViewer:
 
         physionet_radio_rect = pygame.Rect(20, 210, 20, 20)
         draw_radio_button(self.screen, physionet_radio_rect, DARK_GRAY, "PhysioNet Reader", BUTTON_FONT, BLACK, self.selected_reader == "physionet")
+
+        # Add "Tag Window" button
+        tag_button_rect = pygame.Rect(20, 260, 160, 40)
+        hover = handle_hover_effect(tag_button_rect, pygame.mouse.get_pos())
+        draw_button(self.screen, tag_button_rect, LIGHT_GRAY, "Tag Current Window", BUTTON_FONT, WHITE, hover)
+
+
         # Store button and radio button rects for event handling
 
         self.open_button_rect = open_button_rect
         self.apple_radio_rect = apple_radio_rect
         self.physionet_radio_rect = physionet_radio_rect
         self.close_button_rect = close_button_rect
+        self.tag_button_rect = tag_button_rect
 
     def draw_menu(self):
         self.screen.fill(GREY)
@@ -151,6 +160,12 @@ class ECGViewer:
             elif self.physionet_radio_rect.collidepoint(event.pos):
                 self.selected_reader = "physionet"
                 self.update_reader()
+
+            elif self.tag_button_rect.collidepoint(event.pos):
+                # #TODO change naming after introducing window tracking
+                tagged_signal = TaggedSignal(self.current_window)
+                tagged_signal.tag_window()
+                tagged_signal.save_to_json(os.path.split(self.signal_path)[-1][:-4], 0)
 
     def run(self):
         clock = pygame.time.Clock()

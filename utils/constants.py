@@ -20,3 +20,5 @@ AUTO_DELAY_TIME = 0.1
 
 pygame.init()
 BUTTON_FONT = pygame.font.Font(None, 20)
+
+TAGGED_SIGNALS_DIR_NAME = "tagged_signals"
