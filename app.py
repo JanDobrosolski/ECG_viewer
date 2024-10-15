@@ -199,7 +199,7 @@ class ECGViewer:
 
                 elif self.tag_button_rect.collidepoint(event.pos):
                     tagged_signal = TaggedSignal(self.current_window)
-                    tagged_signal.tag_window()
+                    tagged_signal.tag_window(self.sampling_rate_input)
 
                     signal_name = self.signal_name
 
