@@ -153,24 +153,27 @@ class ECGViewer:
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.open_button_rect.collidepoint(event.pos):
-                self.open_signal_file()
+                try:
+                    self.open_signal_file()
+                except:
+                    self.close_signal()
 
             elif self.close_button_rect.collidepoint(event.pos):
-                self.signal_path = None
-                self.signal_name = ""
-                self.current_position = ""
-                self.signal_generator = None
-                self.current_window = None
-                self.playing = False
-                self.signal_reader.clear_reader()
+                self.close_signal()
 
             elif self.apple_radio_rect.collidepoint(event.pos):
                 self.selected_reader = "apple"
-                self.update_reader()
+                try:
+                    self.update_reader()
+                except:
+                    self.close_signal()
 
             elif self.physionet_radio_rect.collidepoint(event.pos):
                 self.selected_reader = "physionet"
-                self.update_reader()
+                try:
+                    self.update_reader()
+                except:
+                    self.close_signal()
 
             elif self.tag_button_rect.collidepoint(event.pos):
                 tagged_signal = TaggedSignal(self.current_window)
@@ -184,12 +187,33 @@ class ECGViewer:
 
                 tagged_signal.save_to_json(dir_path, filename)
 
+    def close_signal(self):
+        self.signal_path = None
+        self.signal_name = ""
+        self.current_position = ""
+        self.signal_generator = None
+        self.current_window = None
+        self.playing = False
+        self.signal_reader.clear_reader()
+
     def draw_signal_info(self):
         font = pygame.font.Font(None, 24)
 
         # Draw the signal name
         text_surface = font.render(f"Signal: {self.signal_name}", True, BLACK)
         self.screen.blit(text_surface, (SIDEBAR_WIDTH + 10, 5))
+
+        # Draw the status of the signal annotation
+        if self.signal_name != "":
+            if os.path.exists(os.path.join(TAGGED_SIGNALS_DIR_NAME, f"size_{self.window_size}", f"step_{self.window_step}", f"{self.signal_name}_pos_{self.current_position}.json")):
+                tagged_state = "Tagged"
+                tagged_color = DARK_GREEN
+            else:
+                tagged_state = "Not tagged"
+                tagged_color = RED
+            
+            text_surface = font.render(tagged_state, True, tagged_color)
+            self.screen.blit(text_surface, (SCREEN_WIDTH * 0.5, 5))
 
         # Draw the current window position
         text_surface = font.render(f"Window number: {self.current_position}", True, BLACK)
