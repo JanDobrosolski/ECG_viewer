@@ -30,7 +30,7 @@ class TaggedSignal:
     def __init__(self, signal: list[float], peaks: list[tuple[int, float]] = [], rmssd: float = None):
         self.signal = signal
         self.peaks = peaks
-        self.rmssd = None
+        self.rmssd = rmssd
     
     def to_dict(self) -> dict:
         return {
