@@ -10,4 +10,4 @@ def calculate_rmssd(peak_indices: list[int], sampling_rate: int) -> float:
 
     mean_squared_diff = np.mean(squared_diffs)
 
-    return np.sqrt(mean_squared_diff).astype(np.float32)
+    return np.sqrt(mean_squared_diff).astype(float)
