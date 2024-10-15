@@ -7,7 +7,9 @@ from typing import Callable
 from utils.metrics_calculations import calculate_rmssd
 
 
-def onclick_tagging(peaks: list[tuple[int, float]]) -> Callable:
+def onclick_tagging(peaks: list[tuple[int, float]], ax: plt.Axes) -> Callable:
+    original_xlim = ax.get_xlim()
+    original_ylim = ax.get_ylim()
     # The actual event handler function
     def handle_click(event):
         if event.key == 'shift' and event.xdata and event.ydata:
@@ -17,6 +19,11 @@ def onclick_tagging(peaks: list[tuple[int, float]]) -> Callable:
             # Plot the clicked point on the graph
             plt.plot(event.xdata, event.ydata, 'ro')
             plt.draw()
+
+            ax.set_xlim(original_xlim)
+            ax.set_ylim(original_ylim)
+            plt.draw()
+
     return handle_click
 
 class TaggedSignal:
@@ -56,7 +63,7 @@ class TaggedSignal:
     def tag_window(self, sampling_rate):
         fig, ax = plt.subplots()
         plt.plot(self.signal)
-        _ = fig.canvas.mpl_connect('button_press_event', onclick_tagging(self.peaks))
+        _ = fig.canvas.mpl_connect('button_press_event', onclick_tagging(self.peaks, ax))
 
         plt.show()
 
