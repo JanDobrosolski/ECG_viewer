@@ -26,6 +26,13 @@ class ECGViewer:
         self.selected_reader: str = "apple"
         self.signal_reader: SignalReader = get_signal_reader(self.selected_reader)
 
+        # Sampling rate input defaults to 512 Hz which is used in attached signals
+        self.sampling_rate_input = "512"
+        self.sampling_rate_active = False
+
+        self.algo_rmssd = ""
+        self.ml_rmssd = ""
+
         self.signal_generator: Optional[Generator[list[float], None, None]] = None
         self.current_window: Optional[list[float]] = None
         self.playing: bool = False
@@ -68,14 +75,25 @@ class ECGViewer:
         hover = handle_hover_effect(tag_button_rect, pygame.mouse.get_pos())
         draw_button(self.screen, tag_button_rect, LIGHT_GRAY, "Tag Current Window", BUTTON_FONT, WHITE, hover)
 
+        # Draw "Sampling Rate [Hz]" label
+        label_surface = BUTTON_FONT.render("Sampling Rate [Hz]:", True, BLACK)
+        self.screen.blit(label_surface, (20, 320))
+
+        # Add textbox for sampling rate input
+        sampling_rate_rect = pygame.Rect(20, 350, 160, 30)
+        pygame.draw.rect(self.screen, WHITE, sampling_rate_rect, 2)
+
+        # Render current value in textbox
+        sampling_rate_text = BUTTON_FONT.render(self.sampling_rate_input, True, BLACK)
+        self.screen.blit(sampling_rate_text, (sampling_rate_rect.x + 5, sampling_rate_rect.y + 5))
 
         # Store button and radio button rects for event handling
-
         self.open_button_rect = open_button_rect
         self.apple_radio_rect = apple_radio_rect
         self.physionet_radio_rect = physionet_radio_rect
         self.close_button_rect = close_button_rect
         self.tag_button_rect = tag_button_rect
+        self.sampling_rate_rect = sampling_rate_rect
 
     def draw_menu(self):
         self.screen.fill(GREY)
@@ -152,40 +170,50 @@ class ECGViewer:
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.open_button_rect.collidepoint(event.pos):
-                try:
-                    self.open_signal_file()
-                except:
+            if self.sampling_rate_rect.collidepoint(event.pos):
+                self.sampling_rate_active = True
+            else:
+                self.sampling_rate_active = False
+                if self.open_button_rect.collidepoint(event.pos):
+                    try:
+                        self.open_signal_file()
+                    except:
+                        self.close_signal()
+
+                elif self.close_button_rect.collidepoint(event.pos):
                     self.close_signal()
 
-            elif self.close_button_rect.collidepoint(event.pos):
-                self.close_signal()
+                elif self.apple_radio_rect.collidepoint(event.pos):
+                    self.selected_reader = "apple"
+                    try:
+                        self.update_reader()
+                    except:
+                        self.close_signal()
 
-            elif self.apple_radio_rect.collidepoint(event.pos):
-                self.selected_reader = "apple"
-                try:
-                    self.update_reader()
-                except:
-                    self.close_signal()
+                elif self.physionet_radio_rect.collidepoint(event.pos):
+                    self.selected_reader = "physionet"
+                    try:
+                        self.update_reader()
+                    except:
+                        self.close_signal()
 
-            elif self.physionet_radio_rect.collidepoint(event.pos):
-                self.selected_reader = "physionet"
-                try:
-                    self.update_reader()
-                except:
-                    self.close_signal()
+                elif self.tag_button_rect.collidepoint(event.pos):
+                    tagged_signal = TaggedSignal(self.current_window)
+                    tagged_signal.tag_window()
 
-            elif self.tag_button_rect.collidepoint(event.pos):
-                tagged_signal = TaggedSignal(self.current_window)
-                tagged_signal.tag_window()
+                    signal_name = self.signal_name
 
-                signal_name = self.signal_name
+                    dir_path = os.path.join(TAGGED_SIGNALS_DIR_NAME, f"size_{self.window_size}", f"step_{self.window_step}")
 
-                dir_path = os.path.join(TAGGED_SIGNALS_DIR_NAME, f"size_{self.window_size}", f"step_{self.window_step}")
+                    filename = f"{signal_name}_pos_{self.current_position}.json"
 
-                filename = f"{signal_name}_pos_{self.current_position}.json"
+                    tagged_signal.save_to_json(dir_path, filename)
 
-                tagged_signal.save_to_json(dir_path, filename)
+        if event.type == pygame.KEYDOWN and self.sampling_rate_active:
+            if event.key == pygame.K_BACKSPACE:
+                self.sampling_rate_input = self.sampling_rate_input[:-1]
+            elif event.unicode.isdigit():
+                self.sampling_rate_input += event.unicode
 
     def close_signal(self):
         self.signal_path = None
@@ -218,6 +246,15 @@ class ECGViewer:
         # Draw the current window position
         text_surface = font.render(f"Window number: {self.current_position}", True, BLACK)
         self.screen.blit(text_surface, (SCREEN_WIDTH * 0.8, 5))
+
+
+        # Draw the classic RMSSD value
+        text_surface = font.render(f"Classic RMSSD: {self.algo_rmssd}", True, BLACK)
+        self.screen.blit(text_surface, (SIDEBAR_WIDTH + 10, SCREEN_HEIGHT - 15))
+
+        # Draw the ML RMSSD value
+        text_surface = font.render(f"ML RMSSD: {self.ml_rmssd}", True, BLACK)
+        self.screen.blit(text_surface, (SCREEN_WIDTH * 0.8, SCREEN_HEIGHT - 15))
 
     def run(self):
         clock = pygame.time.Clock()
