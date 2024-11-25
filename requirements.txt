@@ -1,5 +1,6 @@
 heartpy==1.2.7
 tensorflow==2.14.0
+numpy==1.26.4
 pandas==2.2.2
 scikit-learn==1.4.2
 tqdm==4.66.3

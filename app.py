@@ -11,12 +11,13 @@ from typing import Optional, Generator
 from components.buttons import draw_button, draw_radio_button, handle_hover_effect
 
 from utils.signal_loader import SignalReader, get_signal_reader
+from utils.signal_analyser import HPSignalAnalyser, DLSignalAnalyser
 from utils.tagging_helpers import TaggedSignal
 from utils.constants import *
 
 
 class ECGViewer:
-    def __init__(self, window_size=1536, window_step=128):
+    def __init__(self, window_size=1536, window_step=128, model_path=None):
         self.window_size: int = window_size
         self.window_step: int = window_step
 
@@ -30,8 +31,14 @@ class ECGViewer:
         self.sampling_rate_input = "512"
         self.sampling_rate_active = False
 
+        self.max_analysed_index = 0
+        self.hp_signal_analyser = HPSignalAnalyser(int(self.sampling_rate_input), 100)
+        self.dl_signal_analyser = DLSignalAnalyser(int(self.sampling_rate_input), 100, model_path) if model_path else None
+
         self.algo_rmssd = ""
+        self.total_algo_rmssd = ""
         self.ml_rmssd = ""
+        self.total_ml_rmssd = ""
 
         self.signal_generator: Optional[Generator[list[float], None, None]] = None
         self.current_window: Optional[list[float]] = None
@@ -138,6 +145,10 @@ class ECGViewer:
             if next_window is not None:
                 self.current_window = next_window
                 self.current_position = str(self.signal_reader.position_to_index())
+                self.update_rmssd()
+
+                if int(self.current_position) > self.max_analysed_index:
+                    self.max_analysed_index = int(self.current_position)
             else:
                 self.playing = False
                 self.signal_reader.current_position -= self.window_step
@@ -160,6 +171,18 @@ class ECGViewer:
             self.signal_reader.configure_reader(file_path, self.window_size, self.window_step)
             self.signal_generator = self.signal_reader.stream_normalized_signal()
             self.current_window = next(self.signal_generator, None)
+            self.update_rmssd()
+            
+    def update_rmssd(self):
+        self.algo_rmssd= self.hp_signal_analyser.calculate_RMSSD(self.current_window)
+        if int(self.current_position) > self.max_analysed_index or self.max_analysed_index == 0:
+            self.total_algo_rmssd = round(self.hp_signal_analyser.buffer.update(self.algo_rmssd),2)
+
+        if self.dl_signal_analyser:
+            self.ml_rmssd = self.dl_signal_analyser.calculate_RMSSD(self.current_window)
+            if int(self.current_position) > self.max_analysed_index or self.max_analysed_index == 0:
+                self.total_ml_rmssd = round(self.dl_signal_analyser.buffer.update(self.ml_rmssd),2)
+
 
     def update_reader(self):
         self.signal_reader = get_signal_reader(self.selected_reader)
@@ -249,12 +272,14 @@ class ECGViewer:
 
 
         # Draw the classic RMSSD value
-        text_surface = font.render(f"Classic RMSSD: {self.algo_rmssd}", True, BLACK)
+        text_surface = font.render(f"Classic RMSSD: {self.algo_rmssd} total RMSSD: {self.total_algo_rmssd}", True, BLACK)
         self.screen.blit(text_surface, (SIDEBAR_WIDTH + 10, SCREEN_HEIGHT - 15))
 
-        # Draw the ML RMSSD value
-        text_surface = font.render(f"ML RMSSD: {self.ml_rmssd}", True, BLACK)
-        self.screen.blit(text_surface, (SCREEN_WIDTH * 0.8, SCREEN_HEIGHT - 15))
+        if self.dl_signal_analyser:
+            # Draw the ML RMSSD value
+            disp_ml = round(float(self.ml_rmssd),2) if self.ml_rmssd != "" else ""
+            text_surface = font.render(f"ML RMSSD: {disp_ml} total RMSSD: {self.total_ml_rmssd}", True, BLACK)
+            self.screen.blit(text_surface, (SCREEN_WIDTH * 0.7, SCREEN_HEIGHT - 15))
 
     def run(self):
         clock = pygame.time.Clock()
@@ -294,5 +319,12 @@ class ECGViewer:
 
 
 if __name__ == "__main__":
-    viewer = ECGViewer()
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("--model_path", type=str, default=None)
+
+    args = parser.parse_args()
+
+    viewer = ECGViewer(model_path=args.model_path)
     viewer.run()

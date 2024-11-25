@@ -68,7 +68,7 @@ class PhysionetSignalReader(SignalReader):
             signal_path = signal_path[:-4]
 
         record = wfdb.rdrecord(signal_path)
-        return record.p_signal[:,0].astype(np.float32)
+        return record.p_signal[:,1].astype(np.float32)
 
 
 def get_signal_reader(reader_type: str) -> SignalReader:
